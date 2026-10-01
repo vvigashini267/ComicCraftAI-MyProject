@@ -1,3 +1,4 @@
+
 from app.config import settings
 from app.gemini_common import generate_structured
 from app.schemas import OutlineResponse, PromptRequest
@@ -29,7 +30,8 @@ Requirements:
 - Give the comic a clear title.
 - Each panel must have a concise scene description.
 - Each panel must describe the main action.
-- Maintain character and story continuity from panel 1 to panel {settings.MAX_PANELS}.
+- Maintain character and story continuity from panel 1
+  to panel {settings.MAX_PANELS}.
 - The story should have a beginning, development, and ending.
 """
 
