@@ -53,10 +53,9 @@ def generate_structured(model: str, prompt: str, schema: type[T]) -> T:
             if not retryable or attempt >= MAX_RETRIES:
                 if retryable:
                     except Exception as exc:
-    raise RuntimeError(
-        f"Gemini API error: {type(exc).__name__}: {exc}"
-    ) from exc
-                    ) from exc
+                       raise RuntimeError(
+                           f"Gemini API error: {type(exc).__name__}: {exc}"
+                       ) from exc
                 raise
 
             delay = INITIAL_RETRY_DELAY * (2 ** attempt)
