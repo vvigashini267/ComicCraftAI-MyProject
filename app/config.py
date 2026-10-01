@@ -13,8 +13,8 @@ class Settings(BaseSettings):
 
     # Gemini
     GEMINI_API_KEY: str = ""
-    GEMINI_OUTLINE_MODEL: str = "gemini-3.8-flash"
-    GEMINI_STORY_MODEL: str = "gemini-3.8-flash"
+    GEMINI_OUTLINE_MODEL: str = "gemini-3.7-flash"
+    GEMINI_STORY_MODEL: str = "gemini-3.7-flash"
 
     # Image generation
     IMAGE_PROVIDER: str = "placeholder"
