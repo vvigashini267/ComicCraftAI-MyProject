@@ -1,10 +1,17 @@
+from google import genai
 
 from app.config import settings
-from app.gemini_common import generate_structured
 from app.schemas import OutlineResponse, PromptRequest
 
 
 def generate_outline(request: PromptRequest) -> OutlineResponse:
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError(
+            "GEMINI_API_KEY is missing. Add your Gemini API key to the .env file."
+        )
+
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
     prompt = f"""
 You are the story-outline generator for ComicCraft.
 
@@ -26,17 +33,21 @@ Art style:
 {request.art_style}
 
 Requirements:
-- Create exactly {settings.MAX_PANELS} panels.
+- Create exactly 5 panels.
 - Give the comic a clear title.
 - Each panel must have a concise scene description.
 - Each panel must describe the main action.
-- Maintain character and story continuity from panel 1
-  to panel {settings.MAX_PANELS}.
+- Maintain character and story continuity from panel 1 to panel 5.
 - The story should have a beginning, development, and ending.
 """
 
-    return generate_structured(
-        settings.GEMINI_OUTLINE_MODEL,
-        prompt,
-        OutlineResponse,
+    response = client.models.generate_content(
+        model=settings.GEMINI_OUTLINE_MODEL,
+        contents=prompt,
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": OutlineResponse,
+        },
     )
+
+    return OutlineResponse.model_validate_json(response.text)
