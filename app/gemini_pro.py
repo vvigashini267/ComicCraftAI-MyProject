@@ -1,5 +1,6 @@
+from google import genai
+
 from app.config import settings
-from app.gemini_common import generate_structured
 from app.schemas import OutlineResponse, PromptRequest, StoryResponse
 
 
@@ -7,16 +8,25 @@ def generate_story(
     request: PromptRequest,
     outline: OutlineResponse,
 ) -> StoryResponse:
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError(
+            "GEMINI_API_KEY is missing. Add your Gemini API key to the .env file."
+        )
+
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
     outline_text = "\n".join(
-        f"Panel {panel.panel_number}: "
-        f"Scene: {panel.scene} | Action: {panel.action}"
-        for panel in outline.panels
+        [
+            f"Panel {panel.panel_number}: "
+            f"Scene: {panel.scene} | Action: {panel.action}"
+            for panel in outline.panels
+        ]
     )
 
     prompt = f"""
 You are the detailed story writer for ComicCraft.
 
-Create the complete {settings.MAX_PANELS}-panel comic story using the outline below.
+Create the complete 5-panel comic story using the outline below.
 
 Original user request:
 {request.prompt}
@@ -40,7 +50,7 @@ Outline:
 {outline_text}
 
 Requirements:
-- Create exactly {settings.MAX_PANELS} panels.
+- Create exactly 5 panels.
 - Preserve the same character and story continuity.
 - Give every panel a detailed scene description.
 - Give every panel a short caption.
@@ -52,8 +62,13 @@ Requirements:
 - Do not change the main character's identity between panels.
 """
 
-    return generate_structured(
-        settings.GEMINI_STORY_MODEL,
-        prompt,
-        StoryResponse,
+    response = client.models.generate_content(
+        model=settings.GEMINI_STORY_MODEL,
+        contents=prompt,
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": StoryResponse,
+        },
     )
+
+    return StoryResponse.model_validate_json(response.text)
