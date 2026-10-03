@@ -24,7 +24,6 @@ def build_comic_layout(
                 dialogue=story_panel.dialogue,
                 image_prompt=story_panel.image_prompt,
                 image_path=str(image_path),
-                image_url=f"/static/panels/{Path(image_path).name}",
             )
         )
 
