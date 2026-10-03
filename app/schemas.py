@@ -1,12 +1,8 @@
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.config import settings
+from pydantic import BaseModel, Field
 
 
 class PromptRequest(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    prompt: str = Field(..., min_length=3, max_length=settings.MAX_PROMPT_LENGTH)
+    prompt: str = Field(..., min_length=3, max_length=1200)
     character_name: str = Field(default="Main Character", max_length=100)
     setting: str = Field(default="A realistic Indian setting", max_length=200)
     tone: str = Field(default="Inspirational", max_length=100)
@@ -46,7 +42,6 @@ class ComicPanel(BaseModel):
     dialogue: str
     image_prompt: str
     image_path: str
-    image_url: str = ""
 
 
 class ComicResponse(BaseModel):
