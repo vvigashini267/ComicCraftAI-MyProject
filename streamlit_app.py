@@ -36,8 +36,12 @@ load_secrets()
 
 
 # Import ComicCraft modules AFTER loading secrets
-from app.pipeline import build_comic
-from app.schemas import PromptRequest
+from app.config import settings
+from app.gemini_flash import generate_outline
+from app.gemini_pro import generate_story
+from app.layout_builder import build_comic_layout
+from app.services.image_generator import generate_image
+from app.exporters import save_pdf
 
 
 # ---------------------------------------------------------
@@ -121,26 +125,11 @@ with col2:
 if st.button(
     "🚀 Generate Comic",
     type="primary",
-    width="stretch",
+    use_container_width=True,
 ):
 
     if not prompt.strip():
         st.warning("Please enter a story idea first.")
-        st.stop()
-
-    try:
-        user_request = PromptRequest(
-            prompt=prompt,
-            character_name=character_name,
-            setting=setting,
-            tone=tone,
-            art_style=art_style,
-        )
-    except Exception:
-        st.error(
-            "Please check your inputs: the story idea must be "
-            "at least 3 characters and not too long."
-        )
         st.stop()
 
     try:
@@ -149,55 +138,122 @@ if st.button(
             expanded=True,
         ) as status:
 
-            result = build_comic(user_request, on_progress=st.write)
+            st.write("🧠 Generating story outline...")
+
+            from app.schemas import PromptRequest
+
+            user_request = PromptRequest(
+                prompt=prompt,
+                character_name=character_name,
+                setting=setting,
+                tone=tone,
+                art_style=art_style,
+            )
+
+            outline = generate_outline(user_request)
+
+            st.write("✍️ Writing the 5-panel story...")
+
+            story = generate_story(
+                user_request,
+                outline,
+            )
+
+            st.write("🎨 Generating comic images...")
+
+            image_paths = []
+
+            for panel in story.panels:
+                filename = (
+                    f"streamlit_panel_"
+                    f"{panel.panel_number}.png"
+                )
+
+                image_path = generate_image(
+                    panel.image_prompt,
+                    filename,
+                )
+
+                image_paths.append(image_path)
+
+            st.write("📐 Building comic layout...")
+
+            comic_panels = build_comic_layout(
+                story.panels,
+                image_paths,
+            )
+
+            st.write("📄 Creating PDF...")
+
+            pdf_filename = (
+                f"streamlit_comic_{story.title[:20]}"
+                ".pdf"
+            )
+
+            pdf_path = save_pdf(
+                story.title,
+                comic_panels,
+                pdf_filename,
+            )
 
             status.update(
                 label="Comic generated successfully! 🎉",
                 state="complete",
             )
 
+
         # -------------------------------------------------
         # Display result
         # -------------------------------------------------
         st.divider()
 
-        st.header(f"📖 {result.title}")
+        st.header(f"📖 {story.title}")
 
-        for panel in result.panels:
+        for panel in comic_panels:
 
-            st.subheader(f"Panel {panel.panel_number}")
+            st.subheader(
+                f"Panel {panel.panel_number}"
+            )
 
             st.image(
                 str(panel.image_path),
-                width="stretch",
+                use_container_width=True,
             )
 
-            if panel.caption:
-                st.write(f"**Caption:** {panel.caption}")
+            if hasattr(panel, "scene"):
+                st.write(
+                    f"**Scene:** {panel.scene}"
+                )
 
-            if panel.scene_description:
-                st.write(f"**Scene:** {panel.scene_description}")
-
-            if panel.narration:
-                st.write(f"**Narration:** {panel.narration}")
-
-            if panel.dialogue:
-                st.write(f"**Dialogue:** {panel.dialogue}")
+            if hasattr(panel, "narration"):
+                st.write(
+                    f"**Narration:** {panel.narration}"
+                )
 
             st.divider()
+
 
         # -------------------------------------------------
         # PDF download
         # -------------------------------------------------
-        if result.pdf_path.exists():
+        pdf_file_path = (
+            settings.EXPORTS_DIR / pdf_filename
+        )
 
-            st.download_button(
-                label="📥 Download Comic PDF",
-                data=result.pdf_path.read_bytes(),
-                file_name=result.pdf_filename,
-                mime="application/pdf",
-                width="stretch",
-            )
+        if pdf_file_path.exists():
+
+            with open(
+                pdf_file_path,
+                "rb",
+            ) as file:
+
+                st.download_button(
+                    label="📥 Download Comic PDF",
+                    data=file.read(),
+                    file_name=pdf_filename,
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
 
     except Exception as error:
 
