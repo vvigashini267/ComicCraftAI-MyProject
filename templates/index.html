@@ -40,12 +40,6 @@
 
         <section class="form-card">
 
-            {% if error %}
-            <div class="error-banner" role="alert">
-                {{ error }}
-            </div>
-            {% endif %}
-
             <form
                 action="/generate"
                 method="post"
@@ -64,7 +58,7 @@
                         maxlength="1200"
                         placeholder="Example: A young man starts a small tea business and slowly turns it into a successful shop..."
                         required
-                    >{{ prompt or "" }}</textarea>
+                    ></textarea>
                 </div>
 
 
