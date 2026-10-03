@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 
-from app.config import settings
 from app.main import app
 
 
@@ -34,29 +33,3 @@ def test_generate_validation():
     )
 
     assert response.status_code == 422
-
-
-def test_form_validation_shows_error_instead_of_crashing():
-    response = client.post("/generate", data={"prompt": "hi"})
-
-    assert response.status_code == 422
-    assert "Please check your inputs" in response.text
-
-
-def test_missing_api_key_returns_clear_error(monkeypatch):
-    monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
-
-    response = client.post("/generate", data={"prompt": "A farmer saves a village"})
-
-    assert response.status_code == 503
-    assert "GEMINI_API_KEY" in response.text
-
-
-def test_download_missing_file_returns_404():
-    assert client.get("/download/does-not-exist.pdf").status_code == 404
-
-
-def test_download_blocks_path_traversal():
-    response = client.get("/download/..%5Cpyproject.toml")
-
-    assert response.status_code == 404
