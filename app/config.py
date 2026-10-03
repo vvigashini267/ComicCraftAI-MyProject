@@ -11,12 +11,10 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DEBUG: bool = True
 
-    # Gemini
     GEMINI_API_KEY: str = ""
-    GEMINI_OUTLINE_MODEL: str = "gemini-2.5-flash"
-    GEMINI_STORY_MODEL: str = "gemini-2.5-flash"
+    GEMINI_OUTLINE_MODEL: str = "gemini-3.8-flash"
+    GEMINI_STORY_MODEL: str = "gemini-3.8-flash"
 
-    # Image generation
     IMAGE_PROVIDER: str = "placeholder"
 
     HF_API_KEY: str = ""
@@ -28,11 +26,9 @@ class Settings(BaseSettings):
     IMAGE_STEPS: int = 25
     IMAGE_GUIDANCE: float = 7.5
 
-    # Comic settings
     MAX_PANELS: int = 5
     MAX_PROMPT_LENGTH: int = 1200
 
-    # Directories
     BASE_DIR: Path = BASE_DIR
     TEMPLATES_DIR: Path = BASE_DIR / "templates"
     STATIC_DIR: Path = BASE_DIR / "static"
@@ -48,21 +44,5 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-
-# Streamlit Cloud secrets
-try:
-    import streamlit as st
-
-    if not settings.GEMINI_API_KEY:
-        settings.GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
-
-    if not settings.HF_API_KEY:
-        settings.HF_API_KEY = st.secrets.get("HF_API_KEY", "")
-
-except Exception:
-    pass
-
-
-# Create required directories
 settings.PANELS_DIR.mkdir(parents=True, exist_ok=True)
 settings.EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
