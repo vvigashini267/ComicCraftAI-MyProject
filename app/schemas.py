@@ -48,3 +48,4 @@ class ComicResponse(BaseModel):
     title: str
     panels: list[ComicPanel]
     pdf_filename: str | None = None
+
