@@ -70,5 +70,6 @@ Requirements:
             "response_schema": StoryResponse,
         },
     )
-
+    
     return StoryResponse.model_validate_json(response.text)
+
