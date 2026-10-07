@@ -1,101 +1,81 @@
 from pathlib import Path
+from typing import List
 
-from fpdf import FPDF
+from PIL import Image
 
-from app.config import settings
-from app.schemas import ComicPanel
+
+def clean_pdf_text(text: str) -> str:
+    """
+    Make text safe for PDF if needed.
+    """
+    replacements = {
+        "—": "-",
+        "–": "-",
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
+        "…": "...",
+        "\u00a0": " ",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    return text.encode(
+        "latin-1",
+        "ignore",
+    ).decode("latin-1")
 
 
 def save_pdf(
-    title: str,
-    panels: list[ComicPanel],
-    filename: str,
+    image_paths: List[Path],
+    pdf_path: Path,
 ) -> Path:
-    pdf = FPDF(format="A4")
-    pdf.set_auto_page_break(auto=True, margin=15)
+    """
+    Create a PDF containing all comic panel images.
+    Each panel becomes one PDF page.
+    """
 
-    for panel in panels:
-        pdf.add_page()
+    pdf_path = Path(pdf_path)
 
-        # Title
-        pdf.set_font("Helvetica", "B", 18)
-        pdf.cell(
-            0,
-            12,
-            title[:100],
-            new_x="LMARGIN",
-            new_y="NEXT",
+    pdf_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    if not image_paths:
+        raise ValueError(
+            "No comic images were provided."
         )
 
-        # Panel number
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(
-            0,
-            8,
-            f"Panel {panel.panel_number}",
-            new_x="LMARGIN",
-            new_y="NEXT",
-        )
+    images = []
 
-        # Image
-        image_path = Path(panel.image_path)
+    for image_path in image_paths:
 
-        if image_path.exists():
-            pdf.image(
-                str(image_path),
-                x=15,
-                y=45,
-                w=180,
-                h=100,
+        image_path = Path(image_path)
+
+        if not image_path.exists():
+            raise FileNotFoundError(
+                f"Comic image not found: {image_path}"
             )
 
-        pdf.ln(108)
+        image = Image.open(
+            image_path
+        ).convert("RGB")
 
-        # Scene
-        pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(
-            0,
-            7,
-            "Scene",
-            new_x="LMARGIN",
-            new_y="NEXT",
-        )
+        images.append(image)
 
-        pdf.set_font("Helvetica", "", 10)
+    first_image = images[0]
 
-        scene_text = str(panel.scene_description or "")
-        pdf.multi_cell(
-            180,
-            6,
-            scene_text,
-            new_x="LMARGIN",
-            new_y="NEXT",
-        )
+    remaining_images = images[1:]
 
-        pdf.ln(3)
+    first_image.save(
+        pdf_path,
+        "PDF",
+        resolution=100.0,
+        save_all=True,
+        append_images=remaining_images,
+    )
 
-        # Narration
-        pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(
-            0,
-            7,
-            "Narration",
-            new_x="LMARGIN",
-            new_y="NEXT",
-        )
-
-        pdf.set_font("Helvetica", "", 10)
-
-        narration_text = str(panel.narration or "")
-        pdf.multi_cell(
-            180,
-            6,
-            narration_text,
-            new_x="LMARGIN",
-            new_y="NEXT",
-        )
-
-    output_path = settings.EXPORTS_DIR / filename
-    pdf.output(str(output_path))
-
-    return output_path
+    return pdf_path
