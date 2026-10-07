@@ -1,52 +1,13 @@
-import os
-from pathlib import Path
-
 import streamlit as st
 
-
-# ---------------------------------------------------------
-# Load secrets from Streamlit Cloud / local environment
-# ---------------------------------------------------------
-def load_secrets():
-    secret_keys = [
-        "GEMINI_API_KEY",
-        "GEMINI_OUTLINE_MODEL",
-        "GEMINI_STORY_MODEL",
-        "IMAGE_PROVIDER",
-        "HF_API_KEY",
-        "HF_IMAGE_MODEL",
-        "LOCAL_IMAGE_MODEL",
-        "IMAGE_WIDTH",
-        "IMAGE_HEIGHT",
-        "IMAGE_STEPS",
-        "IMAGE_GUIDANCE",
-        "MAX_PANELS",
-        "MAX_PROMPT_LENGTH",
-    ]
-
-    for key in secret_keys:
-        try:
-            if key in st.secrets:
-                os.environ[key] = str(st.secrets[key])
-        except Exception:
-            pass
-
-
-load_secrets()
-
-
-# Import ComicCraft modules AFTER loading secrets
-from app.config import settings
+from app.schemas import PromptRequest
 from app.gemini_flash import generate_outline
 from app.gemini_pro import generate_story
-from app.layout_builder import build_comic_layout
 from app.services.image_generator import generate_image
+from app.layout_builder import build_comic_layout
 from app.exporters import save_pdf
 
 
-# ---------------------------------------------------------
-# Streamlit page configuration
-# ---------------------------------------------------------
 st.set_page_config(
     page_title="ComicCraft AI",
     page_icon="🎨",
@@ -54,222 +15,287 @@ st.set_page_config(
 )
 
 
-# ---------------------------------------------------------
-# Header
-# ---------------------------------------------------------
 st.title("🎨 ComicCraft AI")
-st.subheader("AI Comic Story Creator using Gemini Models")
+
+st.subheader(
+    "AI Comic Story Creator using Gemini Models"
+)
 
 st.write(
-    "Create a personalized 5-panel comic story using Gemini AI "
-    "and AI-generated images."
+    "Create a personalized 5-panel comic story "
+    "using Gemini AI and AI-generated images."
 )
 
-st.divider()
 
-
-# ---------------------------------------------------------
-# Input section
-# ---------------------------------------------------------
 st.header("📝 Create Your Comic")
 
-prompt = st.text_area(
+
+story_idea = st.text_area(
     "Story Idea",
-    placeholder=(
-        "Example: A brave young farmer discovers a new way "
-        "to save his village..."
+    value=(
+        "A brave young farmer named Ravi discovers "
+        "a magical seed that can save his village "
+        "from a terrible drought."
     ),
-    height=150,
 )
 
-col1, col2 = st.columns(2)
 
-with col1:
-    character_name = st.text_input(
-        "Main Character",
-        value="Main Character",
-    )
-
-    setting = st.text_input(
-        "Setting",
-        value="A realistic Indian setting",
-    )
-
-with col2:
-    tone = st.selectbox(
-        "Tone",
-        [
-            "Inspirational",
-            "Funny",
-            "Dramatic",
-            "Emotional",
-            "Adventure",
-        ],
-    )
-
-    art_style = st.selectbox(
-        "Art Style",
-        [
-            "Cinematic comic style",
-            "2D cartoon style",
-            "3D cartoon style",
-            "Realistic comic style",
-            "Anime style",
-        ],
-    )
+character_name = st.text_input(
+    "Main Character",
+    value="Ravi",
+)
 
 
-# ---------------------------------------------------------
-# Generate Comic
-# ---------------------------------------------------------
-if st.button(
-    "🚀 Generate Comic",
+setting = st.text_input(
+    "Setting",
+    value=(
+        "A small village surrounded by "
+        "mountains and farmland"
+    ),
+)
+
+
+tone = st.text_input(
+    "Tone",
+    value="Adventure and inspirational",
+)
+
+
+art_style = st.text_input(
+    "Art Style",
+    value="Cinematic comic style",
+)
+
+
+create_button = st.button(
+    "✨ Create My Comic",
     type="primary",
-    use_container_width=True,
-):
+)
 
-    if not prompt.strip():
-        st.warning("Please enter a story idea first.")
+
+if create_button:
+
+    if not story_idea.strip():
+
+        st.error(
+            "Please enter a story idea."
+        )
+
         st.stop()
 
     try:
-        with st.status(
-            "Creating your comic...",
-            expanded=True,
-        ) as status:
 
-            st.write("🧠 Generating story outline...")
+        # --------------------------------------
+        # Create request
+        # --------------------------------------
 
-            from app.schemas import PromptRequest
-
-            user_request = PromptRequest(
-                prompt=prompt,
-                character_name=character_name,
-                setting=setting,
-                tone=tone,
-                art_style=art_style,
-            )
-
-            outline = generate_outline(user_request)
-
-            st.write("✍️ Writing the 5-panel story...")
-
-            story = generate_story(
-                user_request,
-                outline,
-            )
-
-            st.write("🎨 Generating comic images...")
-
-            image_paths = []
-
-            for panel in story.panels:
-                filename = (
-                    f"streamlit_panel_"
-                    f"{panel.panel_number}.png"
-                )
-
-                image_path = generate_image(
-                    panel.image_prompt,
-                    filename,
-                )
-
-                image_paths.append(image_path)
-
-            st.write("📐 Building comic layout...")
-
-            comic_panels = build_comic_layout(
-                story.panels,
-                image_paths,
-            )
-
-            st.write("📄 Creating PDF...")
-
-            pdf_filename = (
-                f"streamlit_comic_{story.title[:20]}"
-                ".pdf"
-            )
-
-            pdf_path = save_pdf(
-                story.title,
-                comic_panels,
-                pdf_filename,
-            )
-
-            status.update(
-                label="Comic generated successfully! 🎉",
-                state="complete",
-            )
+        user_request = PromptRequest(
+            prompt=story_idea,
+            character_name=character_name,
+            setting=setting,
+            tone=tone,
+            art_style=art_style,
+        )
 
 
-        # -------------------------------------------------
-        # Display result
-        # -------------------------------------------------
-        st.divider()
+        # --------------------------------------
+        # Generate outline
+        # --------------------------------------
 
-        st.header(f"📖 {story.title}")
+        st.info(
+            "🧠 Generating story outline..."
+        )
 
-        for panel in comic_panels:
+        outline = generate_outline(
+            user_request
+        )
+
+
+        # --------------------------------------
+        # Generate story
+        # --------------------------------------
+
+        st.info(
+            "✍️ Writing the 5-panel story..."
+        )
+
+        story = generate_story(
+            user_request,
+            outline,
+        )
+
+        st.success(
+            "Story generated successfully!"
+        )
+
+
+        # --------------------------------------
+        # Display story
+        # --------------------------------------
+
+        st.header(
+            f"📖 {story.title}"
+        )
+
+
+        for panel in story.panels:
 
             st.subheader(
                 f"Panel {panel.panel_number}"
             )
 
+            st.write(
+                f"**Scene:** "
+                f"{panel.scene_description}"
+            )
+
+            st.write(
+                f"**Caption:** "
+                f"{panel.caption}"
+            )
+
+            if panel.narration:
+
+                st.write(
+                    f"**Narration:** "
+                    f"{panel.narration}"
+                )
+
+            if panel.dialogue:
+
+                st.write(
+                    f"**Dialogue:** "
+                    f"{panel.dialogue}"
+                )
+
+
+        # --------------------------------------
+        # Generate images
+        # --------------------------------------
+
+        st.info(
+            "🎨 Creating comic panel images..."
+        )
+
+        image_paths = []
+
+
+        for panel in story.panels:
+
+            filename = (
+                f"streamlit_panel_"
+                f"{panel.panel_number}.png"
+            )
+
+            image_path = generate_image(
+                panel.image_prompt,
+                filename,
+            )
+
+            image_paths.append(
+                image_path
+            )
+
+
+        # --------------------------------------
+        # Check image count
+        # --------------------------------------
+
+        if len(story.panels) != len(image_paths):
+
+            raise ValueError(
+                f"Story panels: {len(story.panels)}, "
+                f"Images: {len(image_paths)}"
+            )
+
+
+        st.success(
+            "Comic images created!"
+        )
+
+
+        # --------------------------------------
+        # Display all panels
+        # --------------------------------------
+
+        st.header(
+            "🖼️ Comic Panels"
+        )
+
+
+        for index, image_path in enumerate(
+            image_paths,
+            start=1,
+        ):
+
+            st.subheader(
+                f"Panel {index}"
+            )
+
             st.image(
-                str(panel.image_path),
+                image_path,
                 use_container_width=True,
             )
 
-            if hasattr(panel, "scene"):
-                st.write(
-                    f"**Scene:** {panel.scene}"
-                )
 
-            if hasattr(panel, "narration"):
-                st.write(
-                    f"**Narration:** {panel.narration}"
-                )
+        # --------------------------------------
+        # Build comic panel data
+        # --------------------------------------
 
-            st.divider()
-
-
-        # -------------------------------------------------
-        # PDF download
-        # -------------------------------------------------
-        pdf_file_path = (
-            settings.EXPORTS_DIR / pdf_filename
+        st.info(
+            "🖼️ Preparing comic layout..."
         )
 
-        if pdf_file_path.exists():
+        comic_panels = build_comic_layout(
+            story.panels,
+            image_paths,
+        )
 
-            with open(
-                pdf_file_path,
-                "rb",
-            ) as file:
+        st.success(
+            "Comic layout created!"
+        )
 
-                st.download_button(
-                    label="📥 Download Comic PDF",
-                    data=file.read(),
-                    file_name=pdf_filename,
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
 
-    except Exception as error:
+        # --------------------------------------
+        # Create PDF containing ALL panels
+        # --------------------------------------
+
+        st.info(
+            "📄 Creating PDF with all 5 panels..."
+        )
+
+        pdf_path = save_pdf(
+            image_paths,
+            "generated_images/comic_page.pdf",
+        )
+
+
+        st.success(
+            "🎉 Your 5-panel comic PDF is ready!"
+        )
+
+
+        # --------------------------------------
+        # Download PDF
+        # --------------------------------------
+
+        with open(
+            pdf_path,
+            "rb",
+        ) as pdf_file:
+
+            st.download_button(
+                label="📥 Download Complete Comic PDF",
+                data=pdf_file,
+                file_name="ComicCraft_Complete_Comic.pdf",
+                mime="application/pdf",
+            )
+
+
+    except Exception as e:
 
         st.error(
-            "Something went wrong while generating "
-            "the comic."
+            "Something went wrong while generating the comic."
         )
 
-        st.exception(error)
-
-
-# ---------------------------------------------------------
-# Footer
-# ---------------------------------------------------------
-st.divider()
-
-st.caption(
-    "ComicCraft AI • Powered by Gemini + Hugging Face"
-)
+        st.exception(e)
